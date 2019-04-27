@@ -31,6 +31,7 @@ import com.iflytek.cloud.ui.RecognizerDialogListener;
 
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.json.JSONArray;
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
@@ -42,6 +43,10 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import okhttp3.Call;
+import okhttp3.MediaType;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
     private static final int GET_RECODE_AUDIO = 1;
     private static String[] PERMISSION_AUDIO = {
@@ -50,16 +55,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private EditText et_input;
     private TextView text2;
     private Button btn_startspeech;
-    private static String PATH ="http://soulcode.cn/txtrobo/api/chat";
-    private static URL url;
 
-    static{
-        try {
-            url = new URL(PATH);
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-        }
-    }
+
+
     // 用HashMap存储听写结果
     private HashMap<String, String> mIatResults = new LinkedHashMap<String, String>();
 
@@ -160,6 +158,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     class MyRecognizerDialogListener implements RecognizerDialogListener {
+        String  OKhttSTR="I am Iron man";
         private static final String TAG = "MyRecognizerDialogListe";
 
         /**
@@ -198,21 +197,41 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             } catch (Exception e){
             };
 
+                //String GETresult = sendPostMessage(body, "utf-8");
 
-                String GETresult = sendPostMessage(body, "utf-8");
+            MediaType jsonType = MediaType.parse("application/json; charset=utf-8");
+            RequestBody requestBody = RequestBody.create(jsonType,body.toString());
+            System.out.println("传入的是"+body.toString());
+            HttpUtil.sendOkHttpResponse("http://soulcode.cn/txtrobo/api/chat",requestBody, new okhttp3.Callback() {
 
-            System.out.println(" 没有解析的小智返回文本 :" + GETresult);
+                @Override
+                public void onResponse(Call call, Response response) throws IOException {
+                    // 在这里根据返回内容执行具体的逻辑
 
-            et_input.setText(GETresult);// 设置输入框的文本
-            et_input.setSelection(et_input.length());//把光标定位末尾
-            speekText(GETresult);
+                     OKhttSTR=response.body().string();
+                    System.out.println("返回的是"+response.body().string());
+                }
+
+                @Override
+                public void onFailure(Call call, IOException e) {
+                    // 在这里对异常情况进行处理
+                }
+            });
+            //System.out.println(" 没有解析的小智返回文本 :" + GETresult);
+
+            //et_input.setText(GETresult);// 设置输入框的文本
+            //et_input.setSelection(et_input.length());//把光标定位末尾
+            //speekText(GETresult);
+            speekText(OKhttSTR);
 
         }
 
         public  String sendPostMessage(JSONObject body,String encode){
             StringBuffer buffer = new StringBuffer();
-            try {
+             String PATH ="http://soulcode.cn/txtrobo/api/chat";
 
+            try {
+                URL url = new URL(PATH);
                 HttpURLConnection connection = (HttpURLConnection) url.openConnection();
                // System.out.println(" 连接错误代码 :" + connection.getResponseCode());
                 Log.d(TAG, "sendPostMessage: connection.getResponseCode()="+connection.getResponseCode());
