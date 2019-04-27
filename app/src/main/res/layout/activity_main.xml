@@ -16,12 +16,6 @@
         android:hint="请输入文本信息 ..."
         android:textSize="20sp"/>
 
-    <TextView
-        android:id="@+id/text2"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="这是文字"
-        android:textSize="20sp"/>
 
     <Button
         android:id="@+id/btn_startspeech"
@@ -30,10 +24,5 @@
         android:text="语音输入 "
         android:textSize="20sp" />
 
-    <Button
-        android:id="@+id/btn_startspeektext"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="请求得到的文字转声音 "
-        android:textSize="20sp" />
+
 </LinearLayout>

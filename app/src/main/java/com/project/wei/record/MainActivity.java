@@ -1,8 +1,10 @@
 package com.project.wei.record;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.pm.PackageManager;
+import android.os.StrictMode;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -30,6 +32,14 @@ import com.iflytek.cloud.ui.RecognizerDialogListener;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
@@ -40,20 +50,31 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private EditText et_input;
     private TextView text2;
     private Button btn_startspeech;
-    private Button btn_startspeektext;
+    private static String PATH ="http://soulcode.cn/txtrobo/api/chat";
+    private static URL url;
 
+    static{
+        try {
+            url = new URL(PATH);
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        }
+    }
     // 用HashMap存储听写结果
     private HashMap<String, String> mIatResults = new LinkedHashMap<String, String>();
 
-    @Override
+    @SuppressLint("NewApi") @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        StrictMode.ThreadPolicy policy=new StrictMode.ThreadPolicy.Builder().permitAll().build();
+
+        StrictMode.setThreadPolicy(policy);
         SpeechUtility.createUtility(this, SpeechConstant.APPID + "=5cc29188");//初始化SDK
         initView();//初始化布局
     }
      //文字转语音
-    private void speekText() {
+    private void speekText(String str) {
         //1. 创建 SpeechSynthesizer 对象 , 第二个参数： 本地合成时传 InitListener
         SpeechSynthesizer mTts = SpeechSynthesizer.createSynthesizer(this, null);
 //2.合成参数设置，详见《 MSC Reference Manual》 SpeechSynthesizer 类
@@ -67,7 +88,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 //仅支持保存为 pcm 和 wav 格式， 如果不需要保存合成音频，注释该行代码
         mTts.setParameter(SpeechConstant.TTS_AUDIO_PATH, "./sdcard/iflytek.pcm");
 //3.开始合成
-        mTts.startSpeaking(et_input.getText().toString(), new MySynthesizerListener());
+
+        ///.......从JSON中解析出来的answer放这里
+       // str=et_input.getText().toString();
+        mTts.startSpeaking(str, new MySynthesizerListener());
 
     }
 
@@ -136,6 +160,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     class MyRecognizerDialogListener implements RecognizerDialogListener {
+        private static final String TAG = "MyRecognizerDialogListe";
 
         /**
          * @param results
@@ -165,9 +190,72 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             for (String key : mIatResults.keySet()) {
                 resultBuffer.append(mIatResults.get(key));
             }
+            Log.d("resultBuffer",resultBuffer.toString());
+           // 得到的 resultBuffer即需要传入的JSON
+            JSONObject body = new JSONObject();
+            try{
+                body.put("txt", resultBuffer.toString());
+            } catch (Exception e){
+            };
 
-            et_input.setText(resultBuffer.toString());// 设置输入框的文本
+
+                String GETresult = sendPostMessage(body, "utf-8");
+
+            System.out.println(" 没有解析的小智返回文本 :" + GETresult);
+
+            et_input.setText(GETresult);// 设置输入框的文本
             et_input.setSelection(et_input.length());//把光标定位末尾
+            speekText(GETresult);
+
+        }
+
+        public  String sendPostMessage(JSONObject body,String encode){
+            StringBuffer buffer = new StringBuffer();
+            try {
+
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+               // System.out.println(" 连接错误代码 :" + connection.getResponseCode());
+                Log.d(TAG, "sendPostMessage: connection.getResponseCode()="+connection.getResponseCode());
+                connection.setConnectTimeout(3000);
+                connection.setDoInput(true);//表示从服务器获取数据
+                connection.setDoOutput(true);//表示向服务器写数据
+
+                connection.setRequestMethod("POST");
+                //是否使用缓存
+                connection.setUseCaches(false);
+                //表示设置请求体的类型是文本类型
+                connection.setRequestProperty("Content-Type", "application/json");
+
+                DataOutputStream os = new DataOutputStream( connection.getOutputStream());
+                String content = String.valueOf(body);
+                os.writeBytes(content);
+                os.flush();
+                os.close();
+
+                if(connection.getResponseCode() == HttpURLConnection.HTTP_OK) {
+
+                    InputStreamReader in = new InputStreamReader(connection.getInputStream());
+                    BufferedReader bf = new BufferedReader(in);
+                    String recieveData = null;
+                    String result = "";
+                    while ((recieveData = bf.readLine()) != null){
+                        result += recieveData + "\n";
+                    }
+                    in.close();
+                    connection.disconnect();
+                    return result;
+
+                }
+
+            } catch (UnsupportedEncodingException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+
+            return "我是傻子";
         }
 
         @Override
@@ -177,7 +265,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     class MyInitListener implements InitListener {
-
         @Override
         public void onInit(int code) {
             if (code != ErrorCode.SUCCESS) {
@@ -261,10 +348,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         et_input = (EditText) findViewById(R.id.et_input);
         text2 = (TextView) findViewById(R.id.text2);
         btn_startspeech = (Button) findViewById(R.id.btn_startspeech);
-        btn_startspeektext = (Button) findViewById(R.id.btn_startspeektext);
+        //btn_startspeektext = (Button) findViewById(R.id.btn_startspeektext);
         verifyAudioPermissions(this);
         btn_startspeech.setOnClickListener(this);
-        btn_startspeektext.setOnClickListener(this);
+       // btn_startspeektext.setOnClickListener(this);
     }
 
     @Override
@@ -273,11 +360,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             case R.id.btn_startspeech:
                 //语音识别（把声音转文字）
                 startSpeechDialog();
-                break;
-            case R.id.btn_startspeektext:
-                // 语音合成（把文字转声音）
-                speekText();
-
                 break;
         }
     }

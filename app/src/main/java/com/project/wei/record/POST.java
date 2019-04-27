@@ -3,6 +3,7 @@ package com.project.wei.record;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -31,7 +32,7 @@ public class POST {
         }
     }
 
-    public static void main(String[] arsg){
+    public static void test (String[] arsg){
 
         JSONObject body = new JSONObject();
 
